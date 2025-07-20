@@ -6,6 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const md = new MagicDef();
+md.connect('sala-de-pruebas')
 
 // Middleware
 app.use(cors());
