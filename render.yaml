@@ -1,6 +1,0 @@
-services:
-  - type: web
-    name: pederseo-server
-    runtime: python
-    buildCommand: pip install uv && uv sync --frozen
-    startCommand: uv run uvicorn main:app --app-dir src --host 0.0.0.0 --port $PORT
