@@ -18,8 +18,9 @@ if config.config_file_name is not None:
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 # Import model modules here so their tables register on SQLModel.metadata
-# and autogenerate can see them, e.g.:
-# from app.modules.photo_wedding import schema  # noqa: F401
+# and autogenerate can see them.
+from app.modules.status_server import schema as status_server_schema  # noqa: E402,F401
+
 target_metadata = SQLModel.metadata
 
 
