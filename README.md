@@ -8,11 +8,11 @@ https://pederseoserver.onrender.com
 
 ```bash
 uv sync
-uv run uvicorn main:app --reload --app-dir src
+uv run uvicorn main:app --reload --app-dir app
 ```
 
 ## Producción
 
 ```bash
-uv run uvicorn main:app --app-dir src --host 0.0.0.0 --port $PORT
+uv run uvicorn main:app --app-dir app --host 0.0.0.0 --port $PORT
 ```
