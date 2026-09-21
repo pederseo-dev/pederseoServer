@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fotos de Boda</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 480px;
+      margin: 4rem auto;
+      padding: 0 1rem;
+      text-align: center;
+      color: #222;
+    }
+    h1 {
+      margin-bottom: 0.5rem;
+    }
+    p {
+      color: #666;
+    }
+    #status {
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <h1>📷 Fotos de Boda</h1>
+  <p>Próximamente podrás subir y ver las fotos aquí.</p>
+
+  <p id="status">Consultando estado del servidor...</p>
+
+  <script>
+    fetch("/status")
+      .then((res) => res.json())
+      .then((data) => {
+        document.getElementById("status").textContent = data.message;
+      })
+      .catch(() => {
+        document.getElementById("status").textContent =
+          "No se pudo contactar al servidor.";
+      });
+  </script>
+</body>
+</html>
