@@ -275,6 +275,54 @@ def get_general_vidriera() -> list[MesaLeaderboardEntry]:
         ]
 
 
+def get_all_mesas_vidriera() -> dict[int, list[ItemLeaderboardEntry]]:
+    with Session(engine) as session:
+        mesas = session.exec(select(Mesa)).all()
+        items = session.exec(select(Item)).all()
+
+        statement = (
+            select(Photo, func.count(ItemVote.voter_id).label("votes"))
+            .outerjoin(ItemVote, ItemVote.photo_id == Photo.id)
+            .group_by(Photo.id)
+        )
+        rows = session.exec(statement).all()
+
+        best_photo: dict[tuple[int, int], tuple[Photo, int]] = {}
+        for photo, votes in rows:
+            key = (photo.mesa_id, photo.item_id)
+            current = best_photo.get(key)
+            if current is None or votes > current[1]:
+                best_photo[key] = (photo, votes)
+
+        result: dict[int, list[ItemLeaderboardEntry]] = {}
+        for mesa in mesas:
+            entries = []
+            for item in items:
+                found = best_photo.get((mesa.id, item.id))
+                if found is None:
+                    entries.append(
+                        ItemLeaderboardEntry(
+                            item_id=item.id,
+                            item_description=item.description,
+                            photo=None,
+                            vote_count=0,
+                        )
+                    )
+                else:
+                    photo, votes = found
+                    entries.append(
+                        ItemLeaderboardEntry(
+                            item_id=item.id,
+                            item_description=item.description,
+                            photo=photo,
+                            vote_count=votes,
+                        )
+                    )
+            result[mesa.id] = entries
+
+        return result
+
+
 def reset_game() -> None:
     with Session(engine) as session:
         session.exec(delete(ItemVote))

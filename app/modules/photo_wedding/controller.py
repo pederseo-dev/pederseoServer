@@ -141,5 +141,9 @@ def get_general_vidriera() -> list[MesaLeaderboardEntry]:
     return service.get_general_vidriera()
 
 
+def get_all_mesas_vidriera() -> dict[int, list[ItemLeaderboardEntry]]:
+    return service.get_all_mesas_vidriera()
+
+
 def reset_game() -> None:
     service.reset_game()

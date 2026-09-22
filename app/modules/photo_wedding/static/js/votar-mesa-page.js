@@ -1,3 +1,5 @@
+const CORK_ROTATIONS = [-6, 4, -8, 3, -3, 7, -5, 5];
+
 document.addEventListener("DOMContentLoaded", async () => {
   await requireSession();
   await renderNav("/votar-mesa.html");
@@ -8,36 +10,38 @@ async function loadVotingMesas() {
   const meRes = await apiFetch("/photo-wedding/players/me");
   const me = await meRes.json();
 
-  const [mesasRes, myVoteRes, generalRes] = await Promise.all([
+  const [mesasRes, myVoteRes, generalRes, allVidrieraRes] = await Promise.all([
     apiFetch("/photo-wedding/mesas"),
     apiFetch("/photo-wedding/mesa-votes/mine"),
     apiFetch("/photo-wedding/vidriera/general"),
+    apiFetch("/photo-wedding/vidriera/mesas"),
   ]);
   const mesas = await mesasRes.json();
   const myVote = await myVoteRes.json();
   const general = await generalRes.json();
+  const allVidriera = await allVidrieraRes.json();
 
   const mesaById = Object.fromEntries(mesas.map((m) => [m.id, m]));
-
-  // `general` ya viene ordenado de más a menos votada desde el backend.
-  const otherMesaEntries = general.filter((g) => g.mesa_id !== me.mesa_id && mesaById[g.mesa_id]);
 
   const container = document.getElementById("mesas-container");
   container.innerHTML = "";
 
-  for (const entry of otherMesaEntries) {
+  // `general` ya viene ordenado de más a menos votada desde el backend.
+  for (const entry of general) {
     const mesa = mesaById[entry.mesa_id];
+    if (!mesa) continue;
+
+    const isOwnMesa = entry.mesa_id === me.mesa_id;
     const alreadyVoted = myVote && myVote.target_mesa_id === entry.mesa_id;
 
-    const vidrieraRes = await apiFetch(`/photo-wedding/vidriera/mesa/${entry.mesa_id}`);
-    const vidriera = await vidrieraRes.json();
+    const vidriera = allVidriera[entry.mesa_id] || [];
     const entriesWithPhoto = vidriera.filter((v) => v.photo);
 
     const card = document.createElement("section");
     card.className = "card";
 
     const title = document.createElement("h2");
-    title.textContent = mesa.name;
+    title.textContent = isOwnMesa ? `${mesa.name} (tu mesa)` : mesa.name;
     card.appendChild(title);
 
     if (entriesWithPhoto.length === 0) {
@@ -48,54 +52,53 @@ async function loadVotingMesas() {
       continue;
     }
 
-    const strip = document.createElement("div");
-    strip.className = "photo-strip";
+    const board = document.createElement("div");
+    board.className = "mesa-corkboard";
 
-    const perforation = document.createElement("div");
-    perforation.className = "strip-perforation";
-    strip.appendChild(perforation);
-
-    entriesWithPhoto.forEach((itemEntry) => {
-      const frame = document.createElement("div");
-      frame.className = "strip-frame";
-
-      const caption = document.createElement("p");
-      caption.className = "strip-caption";
-      caption.textContent = itemEntry.item_description;
-      frame.appendChild(caption);
-
-      const photoWrap = document.createElement("div");
-      photoWrap.className = "strip-frame-photo";
+    entriesWithPhoto.forEach((itemEntry, index) => {
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "cork-photo";
+      tile.style.transform = `rotate(${CORK_ROTATIONS[index % CORK_ROTATIONS.length]}deg)`;
 
       const img = document.createElement("img");
       img.src = itemEntry.photo.url;
-      photoWrap.appendChild(img);
+      tile.appendChild(img);
 
-      frame.appendChild(photoWrap);
-      strip.appendChild(frame);
+      tile.addEventListener("click", () => {
+        openLightbox(itemEntry.photo.url, itemEntry.item_description);
+      });
+
+      board.appendChild(tile);
     });
+    card.appendChild(board);
 
-    card.appendChild(strip);
-
-    const voteBtn = document.createElement("button");
-    voteBtn.type = "button";
     const voteLabel = `${entry.vote_count} voto${entry.vote_count === 1 ? "" : "s"}`;
-    voteBtn.textContent = `Votar · ${voteLabel}`;
-    if (!alreadyVoted) voteBtn.className = "secondary";
-    voteBtn.addEventListener("click", async () => {
-      const res = alreadyVoted
-        ? await apiFetch("/photo-wedding/mesa-votes", { method: "DELETE" })
-        : await apiFetch("/photo-wedding/mesa-votes", {
-            method: "POST",
-            body: JSON.stringify({ target_mesa_id: entry.mesa_id }),
-          });
-      if (!res.ok) {
-        alert("No se pudo actualizar el voto");
-        return;
-      }
-      await loadVotingMesas();
-    });
-    card.appendChild(voteBtn);
+
+    if (isOwnMesa) {
+      const info = document.createElement("p");
+      info.textContent = `${voteLabel} recibidos`;
+      card.appendChild(info);
+    } else {
+      const voteBtn = document.createElement("button");
+      voteBtn.type = "button";
+      voteBtn.textContent = `Votar · ${voteLabel}`;
+      if (!alreadyVoted) voteBtn.className = "secondary";
+      voteBtn.addEventListener("click", async () => {
+        const res = alreadyVoted
+          ? await apiFetch("/photo-wedding/mesa-votes", { method: "DELETE" })
+          : await apiFetch("/photo-wedding/mesa-votes", {
+              method: "POST",
+              body: JSON.stringify({ target_mesa_id: entry.mesa_id }),
+            });
+        if (!res.ok) {
+          alert("No se pudo actualizar el voto");
+          return;
+        }
+        await loadVotingMesas();
+      });
+      card.appendChild(voteBtn);
+    }
 
     container.appendChild(card);
   }

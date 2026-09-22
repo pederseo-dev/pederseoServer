@@ -108,6 +108,11 @@ def get_mesa_vidriera(mesa_id: int, user_id: UUID = Depends(get_current_user_id)
     return controller.get_mesa_vidriera(mesa_id)
 
 
+@router.get("/vidriera/mesas", response_model=dict[int, list[ItemLeaderboardEntry]])
+def get_all_mesas_vidriera(user_id: UUID = Depends(get_current_user_id)):
+    return controller.get_all_mesas_vidriera()
+
+
 @router.get("/vidriera/general", response_model=list[MesaLeaderboardEntry])
 def get_general_vidriera(user_id: UUID = Depends(get_current_user_id)):
     return controller.get_general_vidriera()

@@ -1,6 +1,15 @@
 let cameraStream = null;
 let cameraFacingMode = "environment";
 
+const CAMERA_FILTERS = [
+  { key: "none", label: "Normal", css: "none" },
+  { key: "bw", label: "B/N", css: "grayscale(1)" },
+  { key: "sepia", label: "Sepia", css: "sepia(0.8) contrast(1.1)" },
+  { key: "vintage", label: "Vintage", css: "sepia(0.35) contrast(1.1) saturate(1.3) brightness(0.95)" },
+];
+
+let selectedCameraFilter = CAMERA_FILTERS[0];
+
 function ensureCameraModal() {
   if (document.getElementById("camera-modal")) return;
 
@@ -10,6 +19,7 @@ function ensureCameraModal() {
   modal.innerHTML = `
     <video id="camera-video" autoplay playsinline muted></video>
     <canvas id="camera-canvas" class="hidden"></canvas>
+    <div class="camera-filters" id="camera-filters"></div>
     <div class="camera-controls">
       <button type="button" id="camera-cancel" class="secondary">Cancelar</button>
       <button type="button" id="camera-flip" class="secondary">Cambiar cámara</button>
@@ -19,6 +29,22 @@ function ensureCameraModal() {
     </div>
   `;
   document.body.appendChild(modal);
+
+  const filtersRow = document.getElementById("camera-filters");
+  CAMERA_FILTERS.forEach((filter) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = filter.label;
+    btn.className = "filter-btn";
+    if (filter.key === selectedCameraFilter.key) btn.classList.add("active");
+    btn.addEventListener("click", () => {
+      selectedCameraFilter = filter;
+      document.getElementById("camera-video").style.filter = filter.css;
+      filtersRow.querySelectorAll(".filter-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+    });
+    filtersRow.appendChild(btn);
+  });
 }
 
 function stopCameraStream() {
@@ -35,6 +61,7 @@ async function startCameraStream(video) {
     audio: false,
   });
   video.srcObject = cameraStream;
+  video.style.filter = selectedCameraFilter.css;
 }
 
 function openCamera() {
@@ -49,12 +76,14 @@ function openCamera() {
     const shootBtn = document.getElementById("camera-shoot");
     const retakeBtn = document.getElementById("camera-retake");
     const confirmBtn = document.getElementById("camera-confirm");
+    const filtersRow = document.getElementById("camera-filters");
 
     function showLiveState() {
       video.classList.remove("hidden");
       canvas.classList.add("hidden");
       shootBtn.classList.remove("hidden");
       flipBtn.classList.remove("hidden");
+      filtersRow.classList.remove("hidden");
       retakeBtn.classList.add("hidden");
       confirmBtn.classList.add("hidden");
     }
@@ -64,6 +93,7 @@ function openCamera() {
       canvas.classList.remove("hidden");
       shootBtn.classList.add("hidden");
       flipBtn.classList.add("hidden");
+      filtersRow.classList.add("hidden");
       retakeBtn.classList.remove("hidden");
       confirmBtn.classList.remove("hidden");
     }
@@ -104,18 +134,17 @@ function openCamera() {
     };
 
     shootBtn.onclick = () => {
-      const maxSize = 1280;
-      let { videoWidth: width, videoHeight: height } = video;
-      if (width > height && width > maxSize) {
-        height = Math.round((height * maxSize) / width);
-        width = maxSize;
-      } else if (height > maxSize) {
-        width = Math.round((width * maxSize) / height);
-        height = maxSize;
-      }
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext("2d").drawImage(video, 0, 0, width, height);
+      // Recorte cuadrado centrado: coincide con lo que se ve en vivo (object-fit: cover en el <video>).
+      const side = Math.min(video.videoWidth, video.videoHeight);
+      const sx = (video.videoWidth - side) / 2;
+      const sy = (video.videoHeight - side) / 2;
+      const outputSize = Math.min(side, 1280);
+
+      canvas.width = outputSize;
+      canvas.height = outputSize;
+      const ctx = canvas.getContext("2d");
+      ctx.filter = selectedCameraFilter.css;
+      ctx.drawImage(video, sx, sy, side, side, 0, 0, outputSize, outputSize);
       showPreviewState();
     };
 
