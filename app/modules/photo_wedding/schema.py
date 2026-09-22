@@ -72,3 +72,43 @@ class ItemCreate(BaseModel):
 class PlayerRegister(BaseModel):
     mesa_id: int
     display_name: str
+
+
+class PhotoCreate(BaseModel):
+    item_id: int
+    url: str
+
+
+class ItemVoteCreate(BaseModel):
+    item_id: int
+    photo_id: int
+
+
+class MesaVoteCreate(BaseModel):
+    target_mesa_id: int
+
+
+# --- Schemas de respuesta (no son tablas) ---
+
+
+class ItemLeaderboardEntry(BaseModel):
+    item_id: int
+    item_description: str
+    photo: Optional[Photo]
+    vote_count: int
+
+
+class MesaLeaderboardEntry(BaseModel):
+    mesa_id: int
+    mesa_name: str
+    vote_count: int
+
+
+class PhotoWithVotes(BaseModel):
+    id: int
+    item_id: int
+    mesa_id: int
+    uploaded_by: UUID
+    url: str
+    created_at: datetime
+    vote_count: int

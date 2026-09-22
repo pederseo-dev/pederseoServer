@@ -8,7 +8,10 @@ import jwt
 
 load_dotenv()
 
-SUPABASE_JWT_SECRET = os.environ["SUPABASE_JWT_SECRET"]
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+JWKS_URL = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+
+_jwks_client = jwt.PyJWKClient(JWKS_URL, cache_keys=True)
 
 security = HTTPBearer()
 
@@ -18,11 +21,13 @@ def get_current_user_id(
 ) -> UUID:
     token = credentials.credentials
     try:
+        signing_key = _jwks_client.get_signing_key_from_jwt(token)
         payload = jwt.decode(
             token,
-            SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
+            signing_key.key,
+            algorithms=["ES256"],
             audience="authenticated",
+            leeway=10,
         )
     except jwt.PyJWTError:
         raise HTTPException(

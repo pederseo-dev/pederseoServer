@@ -4,44 +4,29 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fotos de Boda</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      max-width: 480px;
-      margin: 4rem auto;
-      padding: 0 1rem;
-      text-align: center;
-      color: #222;
-    }
-    h1 {
-      margin-bottom: 0.5rem;
-    }
-    p {
-      color: #666;
-    }
-    #status {
-      margin-top: 2rem;
-      font-size: 0.85rem;
-      color: #999;
-    }
-  </style>
+  <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
-  <h1>📷 Fotos de Boda</h1>
-  <p>Próximamente podrás subir y ver las fotos aquí.</p>
+  <main class="container">
+    <h1>📷 Fotos de Boda</h1>
+    <form id="auth-form" class="card">
+      <label>
+        Email
+        <input type="email" id="email" required autocomplete="email" />
+      </label>
+      <label>
+        Contraseña
+        <input type="password" id="password" required autocomplete="current-password" minlength="6" />
+      </label>
+      <p id="error-msg" class="error"></p>
+      <button type="submit" id="login-btn">Entrar</button>
+      <button type="button" id="signup-btn" class="secondary">Crear cuenta</button>
+    </form>
+  </main>
 
-  <p id="status">Consultando estado del servidor...</p>
-
-  <script>
-    fetch("/status")
-      .then((res) => res.json())
-      .then((data) => {
-        document.getElementById("status").textContent = data.message;
-      })
-      .catch(() => {
-        document.getElementById("status").textContent =
-          "No se pudo contactar al servidor.";
-      });
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth-page.js"></script>
 </body>
 </html>

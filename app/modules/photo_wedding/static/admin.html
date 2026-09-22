@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin — Fotos de Boda</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Panel de admin</h1>
+
+    <section class="card">
+      <h2>Mesas</h2>
+      <ul id="mesas-list"></ul>
+      <form id="mesa-form">
+        <label>
+          Nueva mesa
+          <input type="text" id="mesa-name" required />
+        </label>
+        <p id="mesa-error" class="error"></p>
+        <button type="submit">Agregar mesa</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Items</h2>
+      <ul id="items-list"></ul>
+      <form id="item-form">
+        <label>
+          Nuevo item
+          <input type="text" id="item-description" required />
+        </label>
+        <p id="item-error" class="error"></p>
+        <button type="submit">Agregar item</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Zona de peligro</h2>
+      <p>Borra todas las mesas, items, fotos y votos. Los usuarios registrados (sus cuentas de acceso) no se tocan, pero van a tener que volver a elegir mesa.</p>
+      <button type="button" id="reset-btn" class="secondary">Reiniciar juego</button>
+    </section>
+
+    <button type="button" id="logout-btn" class="secondary">Cerrar sesión</button>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/admin-page.js"></script>
+</body>
+</html>
