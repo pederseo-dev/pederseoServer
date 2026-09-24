@@ -13,6 +13,15 @@ async function renderNav(activeHref) {
     links.push({ href: "/admin.html", label: "Admin" });
   }
 
+  const header = document.createElement("div");
+  header.className = "nav-header";
+
+  const logo = document.createElement("img");
+  logo.src = "/assets/logo.png";
+  logo.alt = "Logo";
+  logo.className = "nav-logo";
+  header.appendChild(logo);
+
   const nav = document.createElement("nav");
   nav.className = "tabs";
 
@@ -33,5 +42,6 @@ async function renderNav(activeHref) {
   });
   nav.appendChild(logoutLink);
 
-  container.replaceWith(nav);
+  header.appendChild(nav);
+  container.replaceWith(header);
 }

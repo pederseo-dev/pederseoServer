@@ -84,12 +84,36 @@ button.secondary {
   margin: 0;
 }
 
+.nav-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.nav-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.login-logo {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin: 0 auto 8px;
+}
+
 nav.tabs {
   display: flex;
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 8px;
-  margin-bottom: 16px;
+  min-width: 0;
+  flex: 1;
 }
 
 nav.tabs a {
