@@ -50,12 +50,66 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadAll();
   });
 
+  document.getElementById("save-ends-at").addEventListener("click", () => {
+    const value = document.getElementById("ends-at").value;
+    if (!value) {
+      document.getElementById("game-error").textContent = "Elegí una fecha y hora";
+      return;
+    }
+    // El input da la hora local sin zona: Date la interpreta como local y toISOString la pasa a UTC
+    saveEndsAt(new Date(value).toISOString());
+  });
+  document.getElementById("close-now").addEventListener("click", () => {
+    if (!confirm("¿Cerrar el juego ahora? Se bloquean las fotos y los votos.")) return;
+    saveEndsAt(new Date().toISOString());
+  });
+  document.getElementById("clear-ends-at").addEventListener("click", () => saveEndsAt(null));
+
   document.getElementById("download-all-btn").addEventListener("click", downloadAllPhotos);
   document.getElementById("logout-btn").addEventListener("click", logout);
 });
 
 async function loadAll() {
-  await Promise.all([loadBoards(), loadPrompts(), loadPhotos()]);
+  await Promise.all([loadBoards(), loadPrompts(), loadPhotos(), loadGame()]);
+}
+
+// Para el input datetime-local, que espera "AAAA-MM-DDTHH:MM" en hora local
+function toLocalInputValue(iso) {
+  const date = new Date(iso);
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
+}
+
+function renderGameStatus(game) {
+  const status = document.getElementById("game-status");
+  const input = document.getElementById("ends-at");
+  if (!game.ends_at) {
+    status.textContent = "🟢 Abierto, sin fecha de cierre.";
+    input.value = "";
+    return;
+  }
+  const when = new Date(game.ends_at).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" });
+  status.textContent = game.closed ? `🔴 Cerrado desde el ${when}.` : `🟢 Abierto, cierra el ${when}.`;
+  input.value = toLocalInputValue(game.ends_at);
+}
+
+async function loadGame() {
+  const res = await apiFetch("/api/game");
+  renderGameStatus(await res.json());
+}
+
+async function saveEndsAt(endsAt) {
+  const errorMsg = document.getElementById("game-error");
+  errorMsg.textContent = "";
+  const res = await apiFetch("/api/admin/game", {
+    method: "PUT",
+    body: JSON.stringify({ ends_at: endsAt }),
+  });
+  if (!res.ok) {
+    errorMsg.textContent = res.status === 403 ? "No tenés permisos de admin" : "No se pudo guardar el cierre";
+    return;
+  }
+  renderGameStatus(await res.json());
 }
 
 // Una fila de la lista con su texto y los botones de renombrar y borrar

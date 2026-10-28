@@ -448,3 +448,45 @@ button.icon-btn {
   border-radius: 6px;
   cursor: pointer;
 }
+
+.game-banner {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--primary);
+  color: var(--primary-dark);
+  font-weight: 600;
+  text-align: center;
+}
+
+.game-banner.closed {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.game-banner a {
+  color: inherit;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.podium-card h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.podium-votes {
+  margin: 0;
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.podium-1 {
+  border: 2px solid #d4af37;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.35);
+}

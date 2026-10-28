@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import AwareDatetime, BaseModel
+from sqlalchemy import Column, DateTime
 from sqlmodel import Field, SQLModel
 
 
@@ -62,6 +63,15 @@ class BoardVote(SQLModel, table=True):
     target_board_id: int = Field(foreign_key="board.id")
 
 
+class GameSettings(SQLModel, table=True):
+    """El período de juego. Hay una sola fila (id = 1); sin fila o sin `ends_at`, el juego no cierra."""
+
+    __tablename__ = "game_settings"
+
+    id: int = Field(default=1, primary_key=True)
+    ends_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+
+
 # --- Schemas de request (no son tablas) ---
 
 
@@ -92,6 +102,10 @@ class BoardVoteCreate(BaseModel):
     target_board_id: int
 
 
+class GameUpdate(BaseModel):
+    ends_at: Optional[AwareDatetime]  # con zona horaria: el navegador manda la hora en UTC
+
+
 # --- Schemas de respuesta (no son tablas) ---
 
 
@@ -102,6 +116,12 @@ class PromptHighlight(BaseModel):
     prompt_text: str
     photo: Optional[Photo]
     vote_count: int
+
+
+class GameState(BaseModel):
+    ends_at: Optional[datetime]
+    closed: bool
+    now: datetime  # hora del servidor, para que la cuenta regresiva no dependa del reloj del celular
 
 
 class BoardRanking(BaseModel):

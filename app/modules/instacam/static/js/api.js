@@ -18,6 +18,14 @@ async function apiFetch(path, options = {}) {
   return res;
 }
 
+// Si el juego cerró con la página abierta (409): avisa y recarga para mostrarla cerrada
+function reloadIfGameClosed(res) {
+  if (res.status !== 409) return false;
+  alert("El juego ya terminó");
+  location.reload();
+  return true;
+}
+
 async function requireSession() {
   const { data } = await supabaseClient.auth.getSession();
   if (!data.session) {

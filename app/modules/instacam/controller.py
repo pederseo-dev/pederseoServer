@@ -10,6 +10,8 @@ from app.modules.instacam.schema import (
     BoardRanking,
     BoardVote,
     BoardVoteCreate,
+    GameState,
+    GameUpdate,
     Photo,
     PhotoCreate,
     PhotoExport,
@@ -24,8 +26,21 @@ from app.modules.instacam.schema import (
 )
 
 
+def _raise_if_game_closed(e: ValueError) -> None:
+    if str(e) == "game_closed":
+        raise HTTPException(status_code=409, detail="El juego ya terminó")
+
+
 def is_admin(user_id: UUID) -> bool:
     return is_admin_user(user_id)
+
+
+def get_game() -> GameState:
+    return service.get_game()
+
+
+def update_game(data: GameUpdate) -> GameState:
+    return service.update_game(data)
 
 
 def list_boards() -> list[Board]:
@@ -90,6 +105,7 @@ def create_photo(user_id: UUID, data: PhotoCreate) -> Photo:
     try:
         return service.create_photo(user_id, data)
     except ValueError as e:
+        _raise_if_game_closed(e)
         if str(e) == "player_not_registered":
             raise HTTPException(status_code=404, detail="Todavía no te registraste en un mural")
         if str(e) == "prompt_not_found":
@@ -108,6 +124,7 @@ def delete_photo(user_id: UUID, photo_id: int) -> None:
     try:
         service.delete_photo(user_id, photo_id, is_admin_user(user_id))
     except ValueError as e:
+        _raise_if_game_closed(e)
         if str(e) == "photo_not_found":
             raise HTTPException(status_code=404, detail="La foto no existe")
         if str(e) == "not_owner":
@@ -126,7 +143,8 @@ def get_my_board_vote(user_id: UUID) -> BoardVote | None:
 def retract_prompt_vote(user_id: UUID, prompt_id: int) -> None:
     try:
         service.retract_prompt_vote(user_id, prompt_id)
-    except ValueError:
+    except ValueError as e:
+        _raise_if_game_closed(e)
         raise HTTPException(status_code=404, detail="No tenés un voto para esa consigna")
 
 
@@ -134,6 +152,7 @@ def cast_prompt_vote(user_id: UUID, data: PromptVoteCreate) -> PromptVote:
     try:
         return service.cast_prompt_vote(user_id, data)
     except ValueError as e:
+        _raise_if_game_closed(e)
         if str(e) == "player_not_registered":
             raise HTTPException(status_code=404, detail="Todavía no te registraste en un mural")
         if str(e) == "photo_not_found":
@@ -146,7 +165,8 @@ def cast_prompt_vote(user_id: UUID, data: PromptVoteCreate) -> PromptVote:
 def retract_board_vote(user_id: UUID) -> None:
     try:
         service.retract_board_vote(user_id)
-    except ValueError:
+    except ValueError as e:
+        _raise_if_game_closed(e)
         raise HTTPException(status_code=404, detail="No tenés un voto de mural")
 
 
@@ -154,6 +174,7 @@ def cast_board_vote(user_id: UUID, data: BoardVoteCreate) -> BoardVote:
     try:
         return service.cast_board_vote(user_id, data)
     except ValueError as e:
+        _raise_if_game_closed(e)
         if str(e) == "player_not_registered":
             raise HTTPException(status_code=404, detail="Todavía no te registraste en un mural")
         if str(e) == "self_vote_not_allowed":

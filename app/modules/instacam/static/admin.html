@@ -38,6 +38,20 @@
     </section>
 
     <section class="card">
+      <h2>Cierre del juego</h2>
+      <p>A esa hora se bloquean las fotos y los votos, y aparece el podio en "Resultados". Todos ven la cuenta regresiva.</p>
+      <p id="game-status"></p>
+      <label>
+        Cierra el
+        <input type="datetime-local" id="ends-at" />
+      </label>
+      <p id="game-error" class="error"></p>
+      <button type="button" id="save-ends-at">Guardar cierre</button>
+      <button type="button" id="close-now" class="secondary">Cerrar ahora</button>
+      <button type="button" id="clear-ends-at" class="secondary">Quitar cierre (reabrir)</button>
+    </section>
+
+    <section class="card">
       <h2>Fotos</h2>
       <p>Tocá ✕ para borrar una foto inapropiada. Se borra también el archivo y sus votos.</p>
       <div id="photos-admin"></div>

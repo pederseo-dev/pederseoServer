@@ -11,6 +11,8 @@ from app.modules.instacam.schema import (
     BoardRanking,
     BoardVote,
     BoardVoteCreate,
+    GameState,
+    GameUpdate,
     Photo,
     PhotoCreate,
     PhotoExport,
@@ -145,6 +147,16 @@ def retract_board_vote(user_id: UUID = Depends(get_current_user_id)):
 @router.get("/is-admin")
 def is_admin(user_id: UUID = Depends(get_current_user_id)):
     return {"is_admin": controller.is_admin(user_id)}
+
+
+@router.get("/game", response_model=GameState)
+def get_game(user_id: UUID = Depends(get_current_user_id)):
+    return controller.get_game()
+
+
+@router.put("/admin/game", response_model=GameState)
+def update_game(data: GameUpdate, _: UUID = Depends(require_admin)):
+    return controller.update_game(data)
 
 
 @router.get("/admin/photos", response_model=list[PhotoExport])

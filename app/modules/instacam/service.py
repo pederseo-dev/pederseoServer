@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from typing import Sequence
 from uuid import UUID
 
@@ -13,6 +14,9 @@ from app.modules.instacam.schema import (
     BoardRanking,
     BoardVote,
     BoardVoteCreate,
+    GameSettings,
+    GameState,
+    GameUpdate,
     Photo,
     PhotoCreate,
     PhotoExport,
@@ -27,6 +31,42 @@ from app.modules.instacam.schema import (
 )
 
 logger = logging.getLogger(__name__)
+
+GAME_SETTINGS_ID = 1
+
+
+def _ends_at(session: Session) -> datetime | None:
+    settings = session.get(GameSettings, GAME_SETTINGS_ID)
+    if settings is None or settings.ends_at is None:
+        return None
+    # Postgres devuelve la hora con zona; por las dudas, una hora sin zona se toma como UTC
+    if settings.ends_at.tzinfo is None:
+        return settings.ends_at.replace(tzinfo=timezone.utc)
+    return settings.ends_at
+
+
+def _is_closed(ends_at: datetime | None) -> bool:
+    return ends_at is not None and datetime.now(timezone.utc) >= ends_at
+
+
+def _ensure_open(session: Session) -> None:
+    if _is_closed(_ends_at(session)):
+        raise ValueError("game_closed")
+
+
+def get_game() -> GameState:
+    with Session(engine) as session:
+        ends_at = _ends_at(session)
+        return GameState(ends_at=ends_at, closed=_is_closed(ends_at), now=datetime.now(timezone.utc))
+
+
+def update_game(data: GameUpdate) -> GameState:
+    with Session(engine) as session:
+        settings = session.get(GameSettings, GAME_SETTINGS_ID) or GameSettings(id=GAME_SETTINGS_ID)
+        settings.ends_at = data.ends_at
+        session.add(settings)
+        session.commit()
+    return get_game()
 
 
 def _remove_files(paths: list[str]) -> None:
@@ -172,6 +212,7 @@ def register_player(user_id: UUID, data: PlayerRegister) -> Player:
 
 def create_photo(user_id: UUID, data: PhotoCreate) -> Photo:
     with Session(engine) as session:
+        _ensure_open(session)
         player = session.get(Player, user_id)
         if player is None:
             raise ValueError("player_not_registered")
@@ -230,6 +271,10 @@ def delete_photo(user_id: UUID, photo_id: int, is_admin: bool) -> None:
         if photo.uploaded_by != user_id and not is_admin:
             raise ValueError("not_owner")
 
+        # El admin puede moderar aunque el juego haya cerrado
+        if not is_admin:
+            _ensure_open(session)
+
         paths = _delete_photos(session, [photo])
         session.commit()
 
@@ -248,6 +293,7 @@ def get_my_board_vote(user_id: UUID) -> BoardVote | None:
 
 def retract_prompt_vote(user_id: UUID, prompt_id: int) -> None:
     with Session(engine) as session:
+        _ensure_open(session)
         vote = session.get(PromptVote, (user_id, prompt_id))
         if vote is None:
             raise ValueError("vote_not_found")
@@ -258,6 +304,7 @@ def retract_prompt_vote(user_id: UUID, prompt_id: int) -> None:
 
 def cast_prompt_vote(user_id: UUID, data: PromptVoteCreate) -> PromptVote:
     with Session(engine) as session:
+        _ensure_open(session)
         player = session.get(Player, user_id)
         if player is None:
             raise ValueError("player_not_registered")
@@ -283,6 +330,7 @@ def cast_prompt_vote(user_id: UUID, data: PromptVoteCreate) -> PromptVote:
 
 def retract_board_vote(user_id: UUID) -> None:
     with Session(engine) as session:
+        _ensure_open(session)
         vote = session.get(BoardVote, user_id)
         if vote is None:
             raise ValueError("vote_not_found")
@@ -293,6 +341,7 @@ def retract_board_vote(user_id: UUID) -> None:
 
 def cast_board_vote(user_id: UUID, data: BoardVoteCreate) -> BoardVote:
     with Session(engine) as session:
+        _ensure_open(session)
         player = session.get(Player, user_id)
         if player is None:
             raise ValueError("player_not_registered")
@@ -413,6 +462,7 @@ def reset_game() -> None:
         session.exec(delete(Player))
         session.exec(delete(Prompt))
         session.exec(delete(Board))
+        session.exec(delete(GameSettings))
         session.commit()
 
     _remove_files(supabase.list_all_photo_paths())

@@ -1,8 +1,9 @@
-const CORK_ROTATIONS = [-6, 4, -8, 3, -3, 7, -5, 5];
+let gameClosed = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   await requireSession();
-  await renderNav("/murales.html");
+  const game = await renderNav("/murales.html");
+  gameClosed = game.closed;
   await loadBoards();
 });
 
@@ -45,32 +46,14 @@ async function loadBoards() {
       continue;
     }
 
-    const corkboard = document.createElement("div");
-    corkboard.className = "board-corkboard";
+    card.appendChild(renderCorkboard(highlightsWithPhoto));
 
-    highlightsWithPhoto.forEach((highlight, index) => {
-      const tile = document.createElement("button");
-      tile.type = "button";
-      tile.className = "cork-photo";
-      tile.style.transform = `rotate(${CORK_ROTATIONS[index % CORK_ROTATIONS.length]}deg)`;
+    const voteLabel = voteCountLabel(entry.vote_count);
 
-      const img = document.createElement("img");
-      img.src = highlight.photo.url;
-      tile.appendChild(img);
-
-      tile.addEventListener("click", () => {
-        openLightbox(highlight.photo.url, highlight.prompt_text);
-      });
-
-      corkboard.appendChild(tile);
-    });
-    card.appendChild(corkboard);
-
-    const voteLabel = `${entry.vote_count} voto${entry.vote_count === 1 ? "" : "s"}`;
-
-    if (isOwnBoard) {
+    if (isOwnBoard || gameClosed) {
       const info = document.createElement("p");
-      info.textContent = `${voteLabel} recibidos`;
+      info.textContent = isOwnBoard ? `${voteLabel} recibidos` : voteLabel;
+      if (alreadyVoted) info.textContent += " · tu voto ❤️";
       card.appendChild(info);
     } else {
       const voteBtn = document.createElement("button");
@@ -84,6 +67,7 @@ async function loadBoards() {
               method: "POST",
               body: JSON.stringify({ target_board_id: entry.board_id }),
             });
+        if (reloadIfGameClosed(res)) return;
         if (!res.ok) {
           alert("No se pudo actualizar el voto");
           return;
@@ -93,26 +77,7 @@ async function loadBoards() {
       card.appendChild(voteBtn);
     }
 
-    const downloadBtn = document.createElement("button");
-    downloadBtn.type = "button";
-    downloadBtn.className = "secondary";
-    downloadBtn.textContent = "📸 Descargar tira";
-    downloadBtn.addEventListener("click", async () => {
-      downloadBtn.disabled = true;
-      downloadBtn.textContent = "Armando tira...";
-      try {
-        const frames = highlightsWithPhoto.map((h) => ({ url: h.photo.url, caption: h.prompt_text }));
-        const blob = await buildStripBlob(entry.board_name, frames);
-        await saveBlob(blob, `tira-${slugify(entry.board_name)}.jpg`);
-      } catch (err) {
-        alert(err.message);
-      } finally {
-        downloadBtn.disabled = false;
-        downloadBtn.textContent = "📸 Descargar tira";
-      }
-    });
-    card.appendChild(downloadBtn);
-
+    card.appendChild(stripDownloadButton(entry.board_name, highlightsWithPhoto));
     container.appendChild(card);
   }
 }

@@ -1,6 +1,9 @@
+let gameClosed = false;
+
 document.addEventListener("DOMContentLoaded", async () => {
   await requireSession();
-  await renderNav("/mi-mural.html");
+  const game = await renderNav("/mi-mural.html");
+  gameClosed = game.closed;
   await loadMiMural();
 });
 
@@ -64,7 +67,7 @@ async function loadMiMural() {
           photoWrap.appendChild(leaderBadge);
         }
 
-        if (photo.uploaded_by === currentUserId) {
+        if (photo.uploaded_by === currentUserId && !gameClosed) {
           const deleteBtn = document.createElement("button");
           deleteBtn.type = "button";
           deleteBtn.className = "strip-badge strip-badge-delete";
@@ -72,6 +75,7 @@ async function loadMiMural() {
           deleteBtn.addEventListener("click", async () => {
             if (!confirm("¿Borrar esta foto?")) return;
             const res = await apiFetch(`/api/photos/${photo.id}`, { method: "DELETE" });
+            if (reloadIfGameClosed(res)) return;
             if (!res.ok) {
               alert("No se pudo borrar la foto");
               return;
@@ -95,6 +99,8 @@ async function loadMiMural() {
         countSpan.textContent = photo.vote_count;
         voteBtn.appendChild(countSpan);
 
+        // Con el juego cerrado queda solo como contador
+        voteBtn.disabled = gameClosed;
         voteBtn.addEventListener("click", async () => {
           const res = alreadyVoted
             ? await apiFetch(`/api/prompt-votes/${prompt.id}`, { method: "DELETE" })
@@ -102,6 +108,7 @@ async function loadMiMural() {
                 method: "POST",
                 body: JSON.stringify({ prompt_id: prompt.id, photo_id: photo.id }),
               });
+          if (reloadIfGameClosed(res)) return;
           if (!res.ok) {
             alert("No se pudo actualizar el voto");
             return;
@@ -115,6 +122,11 @@ async function loadMiMural() {
       });
 
       card.appendChild(strip);
+    }
+
+    if (gameClosed) {
+      container.appendChild(card);
+      continue;
     }
 
     const shootBtn = document.createElement("button");
@@ -140,6 +152,7 @@ async function loadMiMural() {
           method: "POST",
           body: JSON.stringify({ prompt_id: prompt.id, url }),
         });
+        if (reloadIfGameClosed(res)) return;
         if (!res.ok) throw new Error("No se pudo guardar la foto");
         status.textContent = "";
         await loadMiMural();

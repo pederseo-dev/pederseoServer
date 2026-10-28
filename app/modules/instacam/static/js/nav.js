@@ -1,14 +1,19 @@
+// Devuelve el estado del juego ({ ends_at, closed, now }) para que cada página sepa si está cerrado
 async function renderNav(activeHref) {
   const container = document.getElementById("nav");
   if (!container) return;
+
+  const [isAdminRes, gameRes] = await Promise.all([apiFetch("/api/is-admin"), apiFetch("/api/game")]);
+  const { is_admin } = await isAdminRes.json();
+  const game = await gameRes.json();
 
   const links = [
     { href: "/mi-mural.html", label: "Mi mural" },
     { href: "/murales.html", label: "Otros murales" },
   ];
-
-  const isAdminRes = await apiFetch("/api/is-admin");
-  const { is_admin } = await isAdminRes.json();
+  if (game.closed) {
+    links.push({ href: "/resultados.html", label: "🏆 Resultados" });
+  }
   if (is_admin) {
     links.push({ href: "/admin.html", label: "Admin" });
   }
@@ -44,4 +49,50 @@ async function renderNav(activeHref) {
 
   header.appendChild(nav);
   container.replaceWith(header);
+
+  if (game.ends_at) header.after(renderGameBanner(game));
+  return game;
+}
+
+function formatTimeLeft(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (days > 0) return `${days} d ${hours} h`;
+  if (hours > 0) return `${hours} h ${String(minutes).padStart(2, "0")} min`;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function renderGameBanner(game) {
+  const banner = document.createElement("p");
+  banner.className = "game-banner";
+
+  if (game.closed) {
+    banner.classList.add("closed");
+    banner.append("El juego terminó. ");
+    const link = document.createElement("a");
+    link.href = "/resultados.html";
+    link.textContent = "Ver resultados 🏆";
+    banner.appendChild(link);
+    return banner;
+  }
+
+  // Se cuenta con la hora del servidor, así no importa si el reloj del celular está mal
+  const offset = Date.parse(game.now) - Date.now();
+  const endsAt = Date.parse(game.ends_at);
+  const tick = () => {
+    const left = endsAt - (Date.now() + offset);
+    if (left <= 0) {
+      clearInterval(timer);
+      banner.textContent = "⏳ Cerrando...";
+      setTimeout(() => location.reload(), 1500);
+      return;
+    }
+    banner.textContent = `⏳ El juego cierra en ${formatTimeLeft(left)}`;
+  };
+  const timer = setInterval(tick, 1000);
+  tick();
+  return banner;
 }
