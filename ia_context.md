@@ -32,7 +32,7 @@ Backend FastAPI + uv, desplegado en Render, base de datos Supabase (Postgres). O
 ## Estado actual (lo último hecho)
 - Plan por etapas acordado con el usuario:
   1. **Hecho**: renombre mesa→mural (`Board`), item→consigna (`Prompt`), módulo `photo_wedding`→`instacam`, rutas `/photo-wedding`→`/api`, bucket `wedding-photos`→`photos`; desempate; compresión (ya existía).
-  2. Admin sólido: que el reinicio borre también los archivos del bucket (service key en el backend); moderación (admin borra cualquier foto, edita/borra murales y consignas).
+  2. **Hecho**: admin sólido. `app/core/supabase.py` usa la `SECRET_KEY` (service role) para borrar archivos del bucket `photos`. Se borran después del commit y sin romper si Storage falla (`_remove_files` en el service solo loguea). Borrar foto (la persona que la subió o el admin), consigna o mural también borra los archivos. El reinicio vacía el bucket entero, leyendo `storage.objects`, así también limpia huérfanos. Moderación: `PUT`/`DELETE /api/boards/{id}` y `/api/prompts/{id}`. Borrar un mural borra sus fotos y votos, los votos hacia él y sus jugadores, que vuelven a elegir mural. El admin tiene una sección "Fotos" para borrar cualquier foto.
   3. Período con fecha de cierre (cuenta regresiva, bloquear fotos/votos al cerrar) + podio con el mural ganador.
   4. Extras: modo pantalla grande (proyector), QR por mural (`registro.html?mural=ID`), refresco automático cada pocos segundos (no Supabase Realtime: las tablas no tienen RLS y todo pasa por el backend).
 

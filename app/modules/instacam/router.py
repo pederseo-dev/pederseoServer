@@ -37,6 +37,17 @@ def create_board(data: BoardCreate, _: UUID = Depends(require_admin)):
     return controller.create_board(data)
 
 
+@router.put("/boards/{board_id}", response_model=Board)
+def rename_board(board_id: int, data: BoardCreate, _: UUID = Depends(require_admin)):
+    return controller.rename_board(board_id, data)
+
+
+@router.delete("/boards/{board_id}")
+def delete_board(board_id: int, _: UUID = Depends(require_admin)):
+    controller.delete_board(board_id)
+    return Response(status_code=204)
+
+
 @router.get("/boards/highlights", response_model=dict[int, list[PromptHighlight]])
 def get_all_highlights(user_id: UUID = Depends(get_current_user_id)):
     return controller.get_all_highlights()
@@ -60,6 +71,17 @@ def list_prompts(user_id: UUID = Depends(get_current_user_id)):
 @router.post("/prompts", response_model=Prompt)
 def create_prompt(data: PromptCreate, _: UUID = Depends(require_admin)):
     return controller.create_prompt(data)
+
+
+@router.put("/prompts/{prompt_id}", response_model=Prompt)
+def update_prompt(prompt_id: int, data: PromptCreate, _: UUID = Depends(require_admin)):
+    return controller.update_prompt(prompt_id, data)
+
+
+@router.delete("/prompts/{prompt_id}")
+def delete_prompt(prompt_id: int, _: UUID = Depends(require_admin)):
+    controller.delete_prompt(prompt_id)
+    return Response(status_code=204)
 
 
 @router.get("/players/me", response_model=Player)

@@ -36,12 +36,40 @@ def create_board(data: BoardCreate) -> Board:
     return service.create_board(data)
 
 
+def rename_board(board_id: int, data: BoardCreate) -> Board:
+    try:
+        return service.rename_board(board_id, data)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="El mural indicado no existe")
+
+
+def delete_board(board_id: int) -> None:
+    try:
+        service.delete_board(board_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="El mural indicado no existe")
+
+
 def list_prompts() -> list[Prompt]:
     return list(service.list_prompts())
 
 
 def create_prompt(data: PromptCreate) -> Prompt:
     return service.create_prompt(data)
+
+
+def update_prompt(prompt_id: int, data: PromptCreate) -> Prompt:
+    try:
+        return service.update_prompt(prompt_id, data)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="La consigna indicada no existe")
+
+
+def delete_prompt(prompt_id: int) -> None:
+    try:
+        service.delete_prompt(prompt_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="La consigna indicada no existe")
 
 
 def get_me(user_id: UUID) -> Player:
@@ -78,7 +106,7 @@ def list_my_board_photos(user_id: UUID) -> list[PhotoWithVotes]:
 
 def delete_photo(user_id: UUID, photo_id: int) -> None:
     try:
-        service.delete_photo(user_id, photo_id)
+        service.delete_photo(user_id, photo_id, is_admin_user(user_id))
     except ValueError as e:
         if str(e) == "photo_not_found":
             raise HTTPException(status_code=404, detail="La foto no existe")

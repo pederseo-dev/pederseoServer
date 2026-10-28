@@ -1,9 +1,11 @@
+import logging
 from typing import Sequence
 from uuid import UUID
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlmodel import Session, delete, select
 
+from app.core import supabase
 from app.core.database import engine
 from app.modules.instacam.schema import (
     Board,
@@ -24,6 +26,29 @@ from app.modules.instacam.schema import (
     PromptVoteCreate,
 )
 
+logger = logging.getLogger(__name__)
+
+
+def _remove_files(paths: list[str]) -> None:
+    # Se llama después del commit: si Storage falla, la base ya quedó bien y los archivos
+    # huérfanos se limpian en el próximo reinicio (que vacía el bucket entero)
+    if not paths:
+        return
+    try:
+        supabase.remove_photos(paths)
+    except Exception:
+        logger.exception("No se pudieron borrar %d archivos del bucket", len(paths))
+
+
+def _delete_photos(session: Session, photos: Sequence[Photo]) -> list[str]:
+    """Borra las fotos y sus votos (sin commit). Devuelve los archivos a borrar del bucket."""
+    photo_ids = [photo.id for photo in photos]
+    paths = [path for photo in photos if (path := supabase.path_from_public_url(photo.url))]
+    if photo_ids:
+        session.exec(delete(PromptVote).where(PromptVote.photo_id.in_(photo_ids)))
+        session.exec(delete(Photo).where(Photo.id.in_(photo_ids)))
+    return paths
+
 
 def list_boards() -> Sequence[Board]:
     with Session(engine) as session:
@@ -39,6 +64,43 @@ def create_board(data: BoardCreate) -> Board:
         return board
 
 
+def rename_board(board_id: int, data: BoardCreate) -> Board:
+    with Session(engine) as session:
+        board = session.get(Board, board_id)
+        if board is None:
+            raise ValueError("board_not_found")
+
+        board.name = data.name
+        session.add(board)
+        session.commit()
+        session.refresh(board)
+        return board
+
+
+def delete_board(board_id: int) -> None:
+    """Borra el mural con sus fotos y votos. Sus jugadores vuelven a elegir mural."""
+    with Session(engine) as session:
+        board = session.get(Board, board_id)
+        if board is None:
+            raise ValueError("board_not_found")
+
+        photos = session.exec(select(Photo).where(Photo.board_id == board_id)).all()
+        paths = _delete_photos(session, photos)
+
+        player_ids = session.exec(select(Player.user_id).where(Player.board_id == board_id)).all()
+        session.exec(
+            delete(BoardVote).where(
+                or_(BoardVote.target_board_id == board_id, BoardVote.voter_id.in_(player_ids))
+            )
+        )
+        session.exec(delete(PromptVote).where(PromptVote.voter_id.in_(player_ids)))
+        session.exec(delete(Player).where(Player.board_id == board_id))
+        session.delete(board)
+        session.commit()
+
+    _remove_files(paths)
+
+
 def list_prompts() -> Sequence[Prompt]:
     with Session(engine) as session:
         return session.exec(select(Prompt).order_by(Prompt.id)).all()
@@ -51,6 +113,35 @@ def create_prompt(data: PromptCreate) -> Prompt:
         session.commit()
         session.refresh(prompt)
         return prompt
+
+
+def update_prompt(prompt_id: int, data: PromptCreate) -> Prompt:
+    with Session(engine) as session:
+        prompt = session.get(Prompt, prompt_id)
+        if prompt is None:
+            raise ValueError("prompt_not_found")
+
+        prompt.text = data.text
+        session.add(prompt)
+        session.commit()
+        session.refresh(prompt)
+        return prompt
+
+
+def delete_prompt(prompt_id: int) -> None:
+    """Borra la consigna con todas sus fotos y votos."""
+    with Session(engine) as session:
+        prompt = session.get(Prompt, prompt_id)
+        if prompt is None:
+            raise ValueError("prompt_not_found")
+
+        photos = session.exec(select(Photo).where(Photo.prompt_id == prompt_id)).all()
+        paths = _delete_photos(session, photos)
+        session.exec(delete(PromptVote).where(PromptVote.prompt_id == prompt_id))
+        session.delete(prompt)
+        session.commit()
+
+    _remove_files(paths)
 
 
 def get_player(user_id: UUID) -> Player | None:
@@ -130,18 +221,19 @@ def list_my_board_photos(user_id: UUID) -> list[PhotoWithVotes]:
         ]
 
 
-def delete_photo(user_id: UUID, photo_id: int) -> None:
+def delete_photo(user_id: UUID, photo_id: int, is_admin: bool) -> None:
     with Session(engine) as session:
         photo = session.get(Photo, photo_id)
         if photo is None:
             raise ValueError("photo_not_found")
 
-        if photo.uploaded_by != user_id:
+        if photo.uploaded_by != user_id and not is_admin:
             raise ValueError("not_owner")
 
-        session.exec(delete(PromptVote).where(PromptVote.photo_id == photo_id))
-        session.delete(photo)
+        paths = _delete_photos(session, [photo])
         session.commit()
+
+    _remove_files(paths)
 
 
 def get_my_prompt_votes(user_id: UUID) -> Sequence[PromptVote]:
@@ -322,3 +414,5 @@ def reset_game() -> None:
         session.exec(delete(Prompt))
         session.exec(delete(Board))
         session.commit()
+
+    _remove_files(supabase.list_all_photo_paths())

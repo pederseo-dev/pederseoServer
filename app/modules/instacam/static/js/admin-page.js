@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", async () => {
   await requireSession();
-  await loadBoards();
-  await loadPrompts();
+  await loadAll();
 
   document.getElementById("board-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -40,7 +39,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("reset-btn").addEventListener("click", async () => {
-    if (!confirm("¿Reiniciar TODO el juego? Borra murales, consignas, fotos y votos. No se puede deshacer.")) return;
+    if (!confirm("¿Reiniciar TODO el juego? Borra murales, consignas, fotos (también los archivos) y votos. No se puede deshacer.")) return;
 
     const res = await apiFetch("/api/admin/reset", { method: "DELETE" });
     if (!res.ok) {
@@ -48,36 +47,162 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     alert("Juego reiniciado");
-    await loadBoards();
-    await loadPrompts();
+    await loadAll();
   });
 
   document.getElementById("download-all-btn").addEventListener("click", downloadAllPhotos);
   document.getElementById("logout-btn").addEventListener("click", logout);
 });
 
+async function loadAll() {
+  await Promise.all([loadBoards(), loadPrompts(), loadPhotos()]);
+}
+
+// Una fila de la lista con su texto y los botones de renombrar y borrar
+function editableRow({ label, onRename, onDelete }) {
+  const li = document.createElement("li");
+  li.className = "admin-row";
+
+  const text = document.createElement("span");
+  text.textContent = label;
+  li.appendChild(text);
+
+  const renameBtn = document.createElement("button");
+  renameBtn.type = "button";
+  renameBtn.className = "icon-btn";
+  renameBtn.title = "Renombrar";
+  renameBtn.textContent = "✏️";
+  renameBtn.addEventListener("click", onRename);
+  li.appendChild(renameBtn);
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "icon-btn";
+  deleteBtn.title = "Borrar";
+  deleteBtn.textContent = "🗑️";
+  deleteBtn.addEventListener("click", onDelete);
+  li.appendChild(deleteBtn);
+
+  return li;
+}
+
+async function renameItem(path, field, current, label) {
+  const value = prompt(`Nuevo texto para ${label}:`, current)?.trim();
+  if (!value || value === current) return;
+  const res = await apiFetch(path, { method: "PUT", body: JSON.stringify({ [field]: value }) });
+  if (!res.ok) {
+    alert(`No se pudo renombrar ${label}`);
+    return;
+  }
+  await loadAll();
+}
+
+async function deleteItem(path, question) {
+  if (!confirm(question)) return;
+  const res = await apiFetch(path, { method: "DELETE" });
+  if (!res.ok) {
+    alert("No se pudo borrar");
+    return;
+  }
+  await loadAll();
+}
+
 async function loadBoards() {
   const res = await apiFetch("/api/boards");
   const boards = await res.json();
   const list = document.getElementById("boards-list");
-  list.innerHTML = "";
-  for (const board of boards) {
-    const li = document.createElement("li");
-    li.textContent = board.name;
-    list.appendChild(li);
-  }
+  list.replaceChildren(
+    ...boards.map((board) =>
+      editableRow({
+        label: board.name,
+        onRename: () => renameItem(`/api/boards/${board.id}`, "name", board.name, "el mural"),
+        onDelete: () =>
+          deleteItem(
+            `/api/boards/${board.id}`,
+            `¿Borrar el mural "${board.name}"? Se borran sus fotos y votos, y sus jugadores van a tener que elegir otro mural.`
+          ),
+      })
+    )
+  );
 }
 
 async function loadPrompts() {
   const res = await apiFetch("/api/prompts");
   const prompts = await res.json();
   const list = document.getElementById("prompts-list");
-  list.innerHTML = "";
-  for (const prompt of prompts) {
-    const li = document.createElement("li");
-    li.textContent = prompt.text;
-    list.appendChild(li);
+  list.replaceChildren(
+    ...prompts.map((item) =>
+      editableRow({
+        label: item.text,
+        onRename: () => renameItem(`/api/prompts/${item.id}`, "text", item.text, "la consigna"),
+        onDelete: () =>
+          deleteItem(
+            `/api/prompts/${item.id}`,
+            `¿Borrar la consigna "${item.text}"? Se borran todas sus fotos y votos en todos los murales.`
+          ),
+      })
+    )
+  );
+}
+
+async function loadPhotos() {
+  const container = document.getElementById("photos-admin");
+  const res = await apiFetch("/api/admin/photos");
+  if (!res.ok) {
+    container.textContent = res.status === 403 ? "No tenés permisos de admin" : "No se pudieron cargar las fotos";
+    return;
   }
+  const photos = await res.json();
+  if (photos.length === 0) {
+    container.textContent = "Todavía no hay fotos.";
+    return;
+  }
+
+  // Ya vienen ordenadas por mural: se agrupan en el orden en que llegan
+  const byBoard = new Map();
+  for (const photo of photos) {
+    if (!byBoard.has(photo.board_id)) byBoard.set(photo.board_id, { name: photo.board_name, photos: [] });
+    byBoard.get(photo.board_id).photos.push(photo);
+  }
+
+  container.replaceChildren(
+    ...[...byBoard.values()].map((group) => {
+      const section = document.createElement("div");
+
+      const title = document.createElement("h3");
+      title.className = "admin-photos-title";
+      title.textContent = `${group.name} · ${group.photos.length}`;
+      section.appendChild(title);
+
+      const grid = document.createElement("div");
+      grid.className = "admin-photo-grid";
+      for (const photo of group.photos) {
+        const tile = document.createElement("div");
+        tile.className = "admin-photo";
+
+        const img = document.createElement("img");
+        img.src = photo.url;
+        img.alt = photo.prompt_text;
+        img.title = photo.prompt_text;
+        img.loading = "lazy";
+        img.addEventListener("click", () => openLightbox(photo.url, `${group.name} · ${photo.prompt_text}`));
+        tile.appendChild(img);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "photo-delete";
+        deleteBtn.textContent = "✕";
+        deleteBtn.addEventListener("click", () =>
+          deleteItem(`/api/photos/${photo.id}`, `¿Borrar esta foto de "${group.name}" (${photo.prompt_text})?`)
+        );
+        tile.appendChild(deleteBtn);
+
+        grid.appendChild(tile);
+      }
+      section.appendChild(grid);
+      return section;
+    })
+  );
 }
 
 async function runInBatches(tasks, size) {

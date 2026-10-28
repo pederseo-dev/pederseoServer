@@ -38,11 +38,17 @@
     </section>
 
     <section class="card">
+      <h2>Fotos</h2>
+      <p>Tocá ✕ para borrar una foto inapropiada. Se borra también el archivo y sus votos.</p>
+      <div id="photos-admin"></div>
+    </section>
+
+    <section class="card">
       <h2>Zona de peligro</h2>
       <p>Antes de reiniciar, descargá todas las fotos: un ZIP con una carpeta por mural, con sus fotos y su tira.</p>
       <button type="button" id="download-all-btn">Descargar todas las fotos</button>
       <p id="download-status"></p>
-      <p>Reiniciar borra todos los murales, consignas, fotos y votos. Los usuarios registrados (sus cuentas de acceso) no se tocan, pero van a tener que volver a elegir mural.</p>
+      <p>Reiniciar borra todos los murales, consignas, fotos (también los archivos guardados) y votos. Los usuarios registrados (sus cuentas de acceso) no se tocan, pero van a tener que volver a elegir mural.</p>
       <button type="button" id="reset-btn" class="secondary">Reiniciar juego</button>
     </section>
 
@@ -54,6 +60,7 @@
   <script src="/js/api.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="/js/strip.js"></script>
+  <script src="/js/lightbox.js"></script>
   <script src="/js/admin-page.js"></script>
 </body>
 </html>
