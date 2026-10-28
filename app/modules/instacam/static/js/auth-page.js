@@ -1,9 +1,9 @@
 async function goToNextStep() {
-  const res = await apiFetch("/photo-wedding/players/me");
+  const res = await apiFetch("/api/players/me");
   if (res.status === 404) {
     window.location.href = "/registro.html";
   } else if (res.ok) {
-    window.location.href = "/juego.html";
+    window.location.href = "/mi-mural.html";
   } else {
     document.getElementById("error-msg").textContent = "Error inesperado, intentá de nuevo";
   }

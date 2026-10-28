@@ -1,39 +1,39 @@
 document.addEventListener("DOMContentLoaded", async () => {
   await requireSession();
-  await renderNav("/juego.html");
-  await loadMiMesa();
+  await renderNav("/mi-mural.html");
+  await loadMiMural();
 });
 
-async function loadMiMesa() {
-  const [itemsRes, photosRes, myVotesRes, { data: sessionData }] = await Promise.all([
-    apiFetch("/photo-wedding/items"),
-    apiFetch("/photo-wedding/photos/mine"),
-    apiFetch("/photo-wedding/item-votes/mine"),
+async function loadMiMural() {
+  const [promptsRes, photosRes, myVotesRes, { data: sessionData }] = await Promise.all([
+    apiFetch("/api/prompts"),
+    apiFetch("/api/photos/mine"),
+    apiFetch("/api/prompt-votes/mine"),
     supabaseClient.auth.getSession(),
   ]);
-  const items = await itemsRes.json();
+  const prompts = await promptsRes.json();
   const photos = await photosRes.json();
   const myVotes = await myVotesRes.json();
   const currentUserId = sessionData.session.user.id;
 
-  const myVoteByItem = Object.fromEntries(myVotes.map((v) => [v.item_id, v.photo_id]));
+  const myVoteByPrompt = Object.fromEntries(myVotes.map((v) => [v.prompt_id, v.photo_id]));
 
-  const container = document.getElementById("items-container");
+  const container = document.getElementById("prompts-container");
   container.innerHTML = "";
 
-  for (const item of items) {
-    const photosForItem = photos.filter((p) => p.item_id === item.id);
+  for (const prompt of prompts) {
+    const photosForPrompt = photos.filter((p) => p.prompt_id === prompt.id);
 
     const card = document.createElement("section");
     card.className = "card";
 
     const title = document.createElement("h2");
-    title.textContent = item.description;
+    title.textContent = prompt.text;
     card.appendChild(title);
 
-    if (photosForItem.length === 0) {
+    if (photosForPrompt.length === 0) {
       const empty = document.createElement("p");
-      empty.textContent = "Todavía nadie subió una foto para este item.";
+      empty.textContent = "Todavía nadie subió una foto para esta consigna.";
       card.appendChild(empty);
     } else {
       const strip = document.createElement("div");
@@ -43,8 +43,8 @@ async function loadMiMesa() {
       perforation.className = "strip-perforation";
       strip.appendChild(perforation);
 
-      photosForItem.forEach((photo, index) => {
-        const alreadyVoted = myVoteByItem[item.id] === photo.id;
+      photosForPrompt.forEach((photo, index) => {
+        const alreadyVoted = myVoteByPrompt[prompt.id] === photo.id;
         const isLeader = index === 0 && photo.vote_count > 0;
 
         const frame = document.createElement("div");
@@ -71,12 +71,12 @@ async function loadMiMesa() {
           deleteBtn.textContent = "✕";
           deleteBtn.addEventListener("click", async () => {
             if (!confirm("¿Borrar esta foto?")) return;
-            const res = await apiFetch(`/photo-wedding/photos/${photo.id}`, { method: "DELETE" });
+            const res = await apiFetch(`/api/photos/${photo.id}`, { method: "DELETE" });
             if (!res.ok) {
               alert("No se pudo borrar la foto");
               return;
             }
-            await loadMiMesa();
+            await loadMiMural();
           });
           photoWrap.appendChild(deleteBtn);
         }
@@ -97,16 +97,16 @@ async function loadMiMesa() {
 
         voteBtn.addEventListener("click", async () => {
           const res = alreadyVoted
-            ? await apiFetch(`/photo-wedding/item-votes/${item.id}`, { method: "DELETE" })
-            : await apiFetch("/photo-wedding/item-votes", {
+            ? await apiFetch(`/api/prompt-votes/${prompt.id}`, { method: "DELETE" })
+            : await apiFetch("/api/prompt-votes", {
                 method: "POST",
-                body: JSON.stringify({ item_id: item.id, photo_id: photo.id }),
+                body: JSON.stringify({ prompt_id: prompt.id, photo_id: photo.id }),
               });
           if (!res.ok) {
             alert("No se pudo actualizar el voto");
             return;
           }
-          await loadMiMesa();
+          await loadMiMural();
         });
         photoWrap.appendChild(voteBtn);
 
@@ -119,7 +119,7 @@ async function loadMiMesa() {
 
     const shootBtn = document.createElement("button");
     shootBtn.type = "button";
-    shootBtn.textContent = photosForItem.length > 0 ? "Sacar otra foto" : "Sacar foto";
+    shootBtn.textContent = photosForPrompt.length > 0 ? "Sacar otra foto" : "Sacar foto";
 
     const status = document.createElement("p");
     status.className = "error";
@@ -135,14 +135,14 @@ async function loadMiMesa() {
       status.style.color = "inherit";
       status.textContent = "Subiendo...";
       try {
-        const url = await uploadPhotoBlob(blob, item.id);
-        const res = await apiFetch("/photo-wedding/photos", {
+        const url = await uploadPhotoBlob(blob, prompt.id);
+        const res = await apiFetch("/api/photos", {
           method: "POST",
-          body: JSON.stringify({ item_id: item.id, url }),
+          body: JSON.stringify({ prompt_id: prompt.id, url }),
         });
         if (!res.ok) throw new Error("No se pudo guardar la foto");
         status.textContent = "";
-        await loadMiMesa();
+        await loadMiMural();
       } catch (err) {
         status.textContent = err.message;
       }

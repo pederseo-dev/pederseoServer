@@ -12,23 +12,29 @@ Backend FastAPI + uv, desplegado en Render, base de datos Supabase (Postgres). O
 
 ## Auth
 - Supabase Auth (email + password, sin confirmación de email para no trabar el flujo el día del evento).
-- `app/core/auth.py`: dependencia `get_current_user_id` que valida el JWT de Supabase contra `SUPABASE_JWT_SECRET` (HS256, audience "authenticated") y devuelve el UUID del usuario.
-- `app/core/admin.py`: dependencia `require_admin`, compara el user_id contra `ADMIN_USER_ID` (env var, hoy vacía — falta que el admin real se loguee y pase su UUID).
-- Fotos: se suben directo del navegador a Supabase Storage (bucket `wedding-photos`, público, con policies de SELECT público + INSERT solo autenticado) — el backend nunca recibe el archivo, solo la URL resultante.
+- `app/core/auth.py`: dependencia `get_current_user_id` que valida el JWT de Supabase con las claves públicas del JWKS (`{SUPABASE_URL}/auth/v1/.well-known/jwks.json`, ES256, audience "authenticated") y devuelve el UUID del usuario.
+- `app/core/admin.py`: dependencia `require_admin`, compara el user_id contra `ADMIN_USER_ID` (env var).
+- Fotos: se suben directo del navegador a Supabase Storage (bucket `photos`, público, con policy de INSERT solo autenticado) — el backend nunca recibe el archivo, solo la URL resultante. El bucket viejo `wedding-photos` tiene las fotos del primer evento (ya descargadas).
 
 ## Módulos
 - **`status_server`**: `GET /status` — siembra una fila en `server_status` la primera vez y reporta salud de server+DB. Pensado para pings de cronjob.org (keep-alive del free tier de Render).
-- **`photo_wedding`**: la app real. Es un juego de fotos para una boda:
-  - 80 invitados repartidos en **mesas**. Hay una lista fija de **items** (consignas/temas, ej. 5).
-  - **Fase 1 (interna)**: cualquiera de tu mesa saca fotos para cualquier item. Los de tu propia mesa votan (`ItemVote`, se puede votar la propia foto) cuál representa mejor cada item — la vidriera de la mesa muestra en vivo la foto con más votos internos por item.
-  - **Fase 2 (cruzada)**: cada persona tiene un solo voto total (`MesaVote`, no auto-voto) a favor de la vidriera de OTRA mesa. Gana la mesa con más votos.
+- **`instacam`**: la app real, **Instacam**. Juego de fotos genérico para eventos (empezó para una boda). La idea es usarlo por períodos y reiniciar todo entre uno y otro. API en `/api/...`. Código en inglés, interfaz en español:
+  - Jugadores repartidos en **murales** (`Board`, es un equipo). Hay una lista fija de **consignas** (`Prompt`).
+  - **Fase 1 (interna)**: cualquiera de tu mural saca fotos para cualquier consigna. Los de tu propio mural votan (`PromptVote`, se puede votar la propia foto) cuál representa mejor cada consigna — el mural muestra en vivo la foto ganadora de cada consigna.
+  - **Fase 2 (cruzada)**: cada persona tiene un solo voto total (`BoardVote`, no auto-voto) a favor de OTRO mural. Gana el mural con más votos.
+  - **Desempate**: con votos iguales gana la foto más vieja (y entre murales, el de menor id). `_highlights()` en `service.py` es la única fuente de "foto ganadora".
   - Sin estados de "cerrado/finalizado": todo se recalcula en vivo, los votos son reemplazables (no hay historial, un voto por voter_id en cada tabla).
-  - Modelo: `Mesa`, `Item`, `Player` (conecta user_id de Supabase con su mesa+nombre elegidos), `Photo`, `ItemVote`, `MesaVote`.
-  - `/` (raíz del dominio) sirve el `index.html` estático de este módulo (`app/modules/photo_wedding/static/`), montado con `StaticFiles`. Hoy es un placeholder simple.
+  - Modelo: `Board`, `Prompt`, `Player` (conecta user_id de Supabase con su mural+nombre), `Photo`, `PromptVote`, `BoardVote`.
+  - `/` (raíz del dominio) sirve el frontend estático de este módulo (`app/modules/instacam/static/`), montado con `StaticFiles`: JS vanilla sin módulos (scripts globales). Páginas: `index.html` (login/registro de cuenta), `registro.html` (elegir mural y nombre), `mi-mural.html` ("Mi mural": sacar fotos con `camera.js`, votar por consigna), `murales.html` ("Otros murales": corcho con las ganadoras, voto cruzado), `admin.html` (crear murales/consignas, reiniciar juego).
+  - Las fotos ya salen comprimidas de `camera.js`: recorte cuadrado de hasta 1280 px, JPEG 0.7 (~50–200 KB).
+  - Tira estilo cabina de fotos (`static/js/strip.js`): se arma en un canvas en el navegador (foto ganadora de cada consigna + la consigna debajo; pie con logo, mural y fecha) y se exporta como JPG. En "Otros murales" cada mural tiene "Descargar tira"; en admin, "Descargar todas las fotos" arma un ZIP (JSZip) con una carpeta por mural (todas sus fotos + su tira) como respaldo antes de reiniciar, usando `GET /api/admin/photos`. Supabase Storage responde `Access-Control-Allow-Origin: *`, por eso el canvas puede exportar.
 
 ## Estado actual (lo último hecho)
-- Rutas listas: `GET/POST /photo-wedding/mesas`, `GET/POST /photo-wedding/items` (creación admin-only), `GET/POST /photo-wedding/players/me` (registro de jugador).
-- Falta: endpoint de creación de `Photo` (recibe la URL ya subida a Storage, valida item/mesa/que coincida con la mesa del jugador), endpoints de voto (`ItemVote`, `MesaVote`), UI real del frontend (hoy solo hay un placeholder), panel de admin (CRUD de mesas/items desde UI, hoy solo existen las rutas), compresión de imagen client-side antes de subir a Storage (se habló, no implementado).
+- Plan por etapas acordado con el usuario:
+  1. **Hecho**: renombre mesa→mural (`Board`), item→consigna (`Prompt`), módulo `photo_wedding`→`instacam`, rutas `/photo-wedding`→`/api`, bucket `wedding-photos`→`photos`; desempate; compresión (ya existía).
+  2. Admin sólido: que el reinicio borre también los archivos del bucket (service key en el backend); moderación (admin borra cualquier foto, edita/borra murales y consignas).
+  3. Período con fecha de cierre (cuenta regresiva, bloquear fotos/votos al cerrar) + podio con el mural ganador.
+  4. Extras: modo pantalla grande (proyector), QR por mural (`registro.html?mural=ID`), refresco automático cada pocos segundos (no Supabase Realtime: las tablas no tienen RLS y todo pasa por el backend).
 
 ## Preferencia del usuario (importante)
-El usuario pidió explícitamente que, de acá en adelante, el código se le pase en el chat en bloques para que él lo copie y pegue — no editar sus archivos directamente con las herramientas. Las excepciones razonables: archivos de documentación/contexto como este, y comandos que corren herramientas (alembic, tests, etc.) que no son código de la app.
+El asistente hace los cambios directamente en los archivos (antes se pasaba el código en el chat para copiar y pegar; el usuario lo cambió).

@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.modules.photo_wedding.router import router as photo_wedding_router
+from app.modules.instacam.router import router as instacam_router
 from app.modules.status_server.router import router as status_router
 
 app = FastAPI()
@@ -16,8 +16,8 @@ app.add_middleware(
 )
 
 
-app.include_router(photo_wedding_router)
+app.include_router(instacam_router)
 app.include_router(status_router)
 
-PHOTO_WEDDING_STATIC_DIR = Path(__file__).parent / "modules" / "photo_wedding" / "static"
-app.mount("/", StaticFiles(directory=PHOTO_WEDDING_STATIC_DIR, html=True), name="photo_wedding_static")
+INSTACAM_STATIC_DIR = Path(__file__).parent / "modules" / "instacam" / "static"
+app.mount("/", StaticFiles(directory=INSTACAM_STATIC_DIR, html=True), name="instacam_static")

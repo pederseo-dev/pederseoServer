@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin — Instacam</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Panel de admin</h1>
+
+    <section class="card">
+      <h2>Murales</h2>
+      <ul id="boards-list"></ul>
+      <form id="board-form">
+        <label>
+          Nuevo mural
+          <input type="text" id="board-name" required />
+        </label>
+        <p id="board-error" class="error"></p>
+        <button type="submit">Agregar mural</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Consignas</h2>
+      <ul id="prompts-list"></ul>
+      <form id="prompt-form">
+        <label>
+          Nueva consigna
+          <input type="text" id="prompt-text" required />
+        </label>
+        <p id="prompt-error" class="error"></p>
+        <button type="submit">Agregar consigna</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Zona de peligro</h2>
+      <p>Antes de reiniciar, descargá todas las fotos: un ZIP con una carpeta por mural, con sus fotos y su tira.</p>
+      <button type="button" id="download-all-btn">Descargar todas las fotos</button>
+      <p id="download-status"></p>
+      <p>Reiniciar borra todos los murales, consignas, fotos y votos. Los usuarios registrados (sus cuentas de acceso) no se tocan, pero van a tener que volver a elegir mural.</p>
+      <button type="button" id="reset-btn" class="secondary">Reiniciar juego</button>
+    </section>
+
+    <button type="button" id="logout-btn" class="secondary">Cerrar sesión</button>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="/js/strip.js"></script>
+  <script src="/js/admin-page.js"></script>
+</body>
+</html>

@@ -3,11 +3,11 @@ async function renderNav(activeHref) {
   if (!container) return;
 
   const links = [
-    { href: "/juego.html", label: "Mi mesa" },
-    { href: "/votar-mesa.html", label: "Otras mesas" },
+    { href: "/mi-mural.html", label: "Mi mural" },
+    { href: "/murales.html", label: "Otros murales" },
   ];
 
-  const isAdminRes = await apiFetch("/photo-wedding/is-admin");
+  const isAdminRes = await apiFetch("/api/is-admin");
   const { is_admin } = await isAdminRes.json();
   if (is_admin) {
     links.push({ href: "/admin.html", label: "Admin" });

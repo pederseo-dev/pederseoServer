@@ -1,14 +1,14 @@
 document.addEventListener("DOMContentLoaded", async () => {
   await requireSession();
 
-  const mesaSelect = document.getElementById("mesa_id");
-  const mesasRes = await apiFetch("/photo-wedding/mesas");
-  const mesas = await mesasRes.json();
-  for (const mesa of mesas) {
+  const boardSelect = document.getElementById("board_id");
+  const boardsRes = await apiFetch("/api/boards");
+  const boards = await boardsRes.json();
+  for (const board of boards) {
     const option = document.createElement("option");
-    option.value = mesa.id;
-    option.textContent = mesa.name;
-    mesaSelect.appendChild(option);
+    option.value = board.id;
+    option.textContent = board.name;
+    boardSelect.appendChild(option);
   }
 
   const form = document.getElementById("registro-form");
@@ -19,21 +19,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     errorMsg.textContent = "";
 
     const display_name = document.getElementById("display_name").value;
-    const mesa_id = Number(mesaSelect.value);
+    const board_id = Number(boardSelect.value);
 
-    const res = await apiFetch("/photo-wedding/players/me", {
+    const res = await apiFetch("/api/players/me", {
       method: "POST",
-      body: JSON.stringify({ display_name, mesa_id }),
+      body: JSON.stringify({ display_name, board_id }),
     });
 
     if (!res.ok) {
       errorMsg.textContent = "No se pudo completar el registro";
       return;
     }
-    window.location.href = "/juego.html";
+    window.location.href = "/mi-mural.html";
   });
     document.getElementById("logout-btn").addEventListener("click", logout);
 
 });
-
-

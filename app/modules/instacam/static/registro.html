@@ -9,18 +9,25 @@
 </head>
 <body>
   <main class="container">
-    <div id="nav"></div>
-    <h1>Mi mesa</h1>
-    <p>Sacá fotos y votá cuál representa mejor a cada consigna. Un voto por item, se puede retirar. La foto ganadora de cada consigna (🏆) es la que van a ver las demás mesas.</p>
-    <div id="items-container"></div>
+    <h1>¿Quién sos y en qué mural estás?</h1>
+    <form id="registro-form" class="card">
+    <label>
+        Tu nombre
+        <input type="text" id="display_name" required />
+    </label>
+    <label>
+        Tu mural
+        <select id="board_id" required></select>
+    </label>
+    <p id="error-msg" class="error"></p>
+    <button type="submit">Confirmar</button>
+    </form>
+    <button type="button" id="logout-btn" class="secondary">Cerrar sesión</button>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="/js/supabase-client.js"></script>
   <script src="/js/api.js"></script>
-  <script src="/js/nav.js"></script>
-  <script src="/js/camera.js"></script>
-  <script src="/js/upload.js"></script>
-  <script src="/js/juego-page.js"></script>
+  <script src="/js/registro-page.js"></script>
 </body>
 </html>
