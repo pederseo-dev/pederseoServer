@@ -113,7 +113,7 @@ async function saveEndsAt(endsAt) {
 }
 
 // Una fila de la lista con su texto y los botones de renombrar y borrar
-function editableRow({ label, onRename, onDelete }) {
+function editableRow({ label, onRename, onDelete, onQr }) {
   const li = document.createElement("li");
   li.className = "admin-row";
 
@@ -129,6 +129,16 @@ function editableRow({ label, onRename, onDelete }) {
   renameBtn.addEventListener("click", onRename);
   li.appendChild(renameBtn);
 
+  if (onQr) {
+    const qrBtn = document.createElement("button");
+    qrBtn.type = "button";
+    qrBtn.className = "icon-btn qr-btn";
+    qrBtn.title = "Ver QR para unirse";
+    qrBtn.textContent = "QR";
+    qrBtn.addEventListener("click", onQr);
+    li.appendChild(qrBtn);
+  }
+
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
   deleteBtn.className = "icon-btn";
@@ -138,6 +148,56 @@ function editableRow({ label, onRename, onDelete }) {
   li.appendChild(deleteBtn);
 
   return li;
+}
+
+// El QR abre el registro con ese mural ya elegido
+function boardJoinUrl(board) {
+  return `${location.origin}/registro.html?mural=${board.id}`;
+}
+
+function qrDataUrl(text) {
+  const qr = qrcode(0, "M");
+  qr.addData(text);
+  qr.make();
+  return qr.createDataURL(10, 4);
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Una hoja con el QR de cada mural, lista para imprimir y dejar en cada lugar
+function printAllQrs(boards) {
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("El navegador bloqueó la ventana nueva. Permití las ventanas emergentes e intentá de nuevo.");
+    return;
+  }
+  const cards = boards
+    .map(
+      (board) => `
+        <figure>
+          <img src="${qrDataUrl(boardJoinUrl(board))}" alt="" />
+          <figcaption>${escapeHtml(board.name)}</figcaption>
+          <p>Escaneá para unirte a este mural</p>
+        </figure>`
+    )
+    .join("");
+  win.document.write(`<!doctype html>
+    <html lang="es"><head><meta charset="utf-8" /><title>QR de los murales</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
+      main { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+      figure { margin: 0; padding: 16px; border: 2px dashed #b8895f; border-radius: 12px; text-align: center; break-inside: avoid; }
+      img { width: 70%; image-rendering: pixelated; }
+      figcaption { font-size: 1.6rem; font-weight: 700; margin-top: 8px; }
+      p { margin: 4px 0 0; color: #666; }
+    </style></head>
+    <body><main>${cards}</main></body></html>`);
+  win.document.close();
+  win.onload = () => win.print();
 }
 
 async function renameItem(path, field, current, label) {
@@ -165,11 +225,15 @@ async function loadBoards() {
   const res = await apiFetch("/api/boards");
   const boards = await res.json();
   const list = document.getElementById("boards-list");
+  const printBtn = document.getElementById("print-qrs-btn");
+  printBtn.classList.toggle("hidden", boards.length === 0);
+  printBtn.onclick = () => printAllQrs(boards);
   list.replaceChildren(
     ...boards.map((board) =>
       editableRow({
         label: board.name,
         onRename: () => renameItem(`/api/boards/${board.id}`, "name", board.name, "el mural"),
+        onQr: () => openLightbox(qrDataUrl(boardJoinUrl(board)), `${board.name} · ${boardJoinUrl(board)}`),
         onDelete: () =>
           deleteItem(
             `/api/boards/${board.id}`,

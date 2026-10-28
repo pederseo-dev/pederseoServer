@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const game = await renderNav("/murales.html");
   gameClosed = game.closed;
   await loadBoards();
+  autoRefresh(loadBoards, 15);
 });
 
 async function loadBoards() {
@@ -19,6 +20,7 @@ async function loadBoards() {
   const myVote = await myVoteRes.json();
   const ranking = await rankingRes.json();
   const allHighlights = await highlightsRes.json();
+  if (!hasChanged("murales", [me, myVote, ranking, allHighlights])) return;
 
   const container = document.getElementById("boards-container");
   container.innerHTML = "";

@@ -36,6 +36,26 @@ async function requireSession() {
 }
 
 
+// Vuelve a llamar a `load` cada `seconds` segundos mientras la pestaña está a la vista,
+// y enseguida cuando la persona vuelve a la pestaña
+function autoRefresh(load, seconds) {
+  const run = () => {
+    if (!document.hidden) load().catch(() => {});
+  };
+  setInterval(run, seconds * 1000);
+  document.addEventListener("visibilitychange", run);
+}
+
+// true si `data` es distinto de lo que se dibujó la última vez con esa `key`:
+// así el refresco automático no redibuja (ni mueve la pantalla) si no cambió nada
+const lastRendered = {};
+function hasChanged(key, data) {
+  const signature = JSON.stringify(data);
+  if (lastRendered[key] === signature) return false;
+  lastRendered[key] = signature;
+  return true;
+}
+
 async function logout() {
   await supabaseClient.auth.signOut();
   window.location.href = "/index.html";

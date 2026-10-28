@@ -1,10 +1,13 @@
 let gameClosed = false;
+// Mientras se sube una foto no se refresca solo, para no borrar el "Subiendo..."
+let uploading = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   await requireSession();
   const game = await renderNav("/mi-mural.html");
   gameClosed = game.closed;
   await loadMiMural();
+  autoRefresh(() => (uploading ? Promise.resolve() : loadMiMural()), 10);
 });
 
 async function loadMiMural() {
@@ -18,6 +21,7 @@ async function loadMiMural() {
   const photos = await photosRes.json();
   const myVotes = await myVotesRes.json();
   const currentUserId = sessionData.session.user.id;
+  if (!hasChanged("mi-mural", [prompts, photos, myVotes])) return;
 
   const myVoteByPrompt = Object.fromEntries(myVotes.map((v) => [v.prompt_id, v.photo_id]));
 
@@ -146,6 +150,7 @@ async function loadMiMural() {
 
       status.style.color = "inherit";
       status.textContent = "Subiendo...";
+      uploading = true;
       try {
         const url = await uploadPhotoBlob(blob, prompt.id);
         const res = await apiFetch("/api/photos", {
@@ -158,6 +163,8 @@ async function loadMiMural() {
         await loadMiMural();
       } catch (err) {
         status.textContent = err.message;
+      } finally {
+        uploading = false;
       }
     });
 

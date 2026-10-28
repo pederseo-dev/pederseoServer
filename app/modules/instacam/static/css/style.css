@@ -490,3 +490,147 @@ button:disabled {
   border: 2px solid #d4af37;
   box-shadow: 0 4px 16px rgba(212, 175, 55, 0.35);
 }
+
+a.button-link {
+  display: block;
+  margin-bottom: 24px;
+  padding: 14px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* --- Pantalla grande (pantalla.html) --- */
+
+body.screen {
+  padding: 24px clamp(16px, 3vw, 48px) 48px;
+}
+
+.screen-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.screen-header h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+}
+
+.screen-logo {
+  width: clamp(48px, 5vw, 72px);
+  height: clamp(48px, 5vw, 72px);
+  object-fit: contain;
+}
+
+.screen-banner {
+  flex: 1;
+  min-width: 220px;
+}
+
+.screen-banner .game-banner {
+  margin: 0;
+  font-size: clamp(1rem, 1.8vw, 1.5rem);
+}
+
+.screen-header button {
+  width: auto;
+}
+
+.screen-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .screen-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.screen-section-title {
+  margin: 0 0 16px;
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+}
+
+.screen-boards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.screen-board {
+  margin-bottom: 0;
+}
+
+.screen-board h3 {
+  margin: 0;
+  font-size: clamp(1.2rem, 1.8vw, 1.6rem);
+}
+
+.screen-board .cork-photo img {
+  width: clamp(92px, 9vw, 140px);
+  height: clamp(92px, 9vw, 140px);
+}
+
+.screen-feed {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.screen-photo {
+  margin: 0;
+  background: white;
+  padding: 8px 8px 10px;
+  border-radius: 6px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+}
+
+.screen-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.screen-photo figcaption {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.screen-photo.is-new {
+  animation: photo-pop 0.9s ease-out;
+}
+
+@keyframes photo-pop {
+  0% {
+    transform: scale(0.6) rotate(-6deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.06) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+button.icon-btn.qr-btn {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+}
